@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"downer/core"
+	"github.com/anoyah/downer/core"
 )
 
 var (

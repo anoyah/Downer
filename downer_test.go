@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"downer/core"
+	"github.com/anoyah/downer/core"
 )
 
 func TestDownload(t *testing.T) {

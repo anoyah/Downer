@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"downer/compress"
-	"downer/http"
-	"downer/tools"
+	"github.com/anoyah/downer/compress"
+	"github.com/anoyah/downer/http"
+	"github.com/anoyah/downer/tools"
 )
 
 var (

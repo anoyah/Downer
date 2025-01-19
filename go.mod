@@ -1,4 +1,4 @@
-module downer
+module github.com/anoyah/downer
 
 go 1.23.4
 
