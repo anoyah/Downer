@@ -38,19 +38,20 @@ var (
 )
 
 const (
-	UNKNOWN             = "unknown"
 	registryUrl         = "https://registry-1.docker.io/v2/library/%s/%s/%s"
-	WwwAuthenticate     = "Www-Authenticate"
-	AcceptRefresh       = "application/vnd.docker.distribution.manifest.v2+json,application/vnd.docker.distribution.manifest.list.v2+json"
-	DefaultTime         = "1970-01-01T08:00:00+08:00"
-	LayerName           = "/layer.tar"
-	Repositories        = "repositories"
-	RepositoriesContent = `{"%s":{"%s":"%s"}}`
-	ManifestJson        = "manifest.json"
 	OutFileTmpl         = "%s-%s-%s.tar.gz"
-	MANIFESTS           = "manifests"
-	BLOBS               = "blobs"
-	VERSION             = "VERSION"
+	repositoriesContent = `{"%s":{"%s":"%s"}}`
+
+	UNKNOWN         = "unknown"
+	WwwAuthenticate = "Www-Authenticate"
+	AcceptRefresh   = "application/vnd.docker.distribution.manifest.v2+json,application/vnd.docker.distribution.manifest.list.v2+json"
+	DefaultTime     = "1970-01-01T08:00:00+08:00"
+	LayerName       = "/layer.tar"
+	Repositories    = "repositories"
+	ManifestJson    = "manifest.json"
+	MANIFESTS       = "manifests"
+	BLOBS           = "blobs"
+	VERSION         = "VERSION"
 )
 
 type (
@@ -74,18 +75,19 @@ func init() {
 		os.Exit(0)
 	}
 
-	fmt.Printf("created temp dir: %s\n", tempDir)
+	fmt.Printf("created temporary folder: %s\n", tempDir)
 }
 
 type Config struct {
 	Arch  string
 	Name  string
 	Proxy string
+	Debug bool
 }
 
 // NewDp ...
 func NewDp(cfg *Config) (*Dp, error) {
-	log, err := newLogger()
+	log, err := newLogger(cfg.Debug)
 	if err != nil {
 		panic(err)
 	}
@@ -165,6 +167,9 @@ func (d *Dp) Run() error {
 		d.log.Errorf("get digest source: ", err)
 		panic(err)
 	}
+	layers := digestSource.Layers
+
+	fmt.Printf("load layers length: %d, start download...\n", len(layers))
 
 	digestModel, err := d.saveDegistFile(digestSource.Config.Digest, digestSource.Config.MediaType, token.Token)
 	if err != nil {
@@ -173,8 +178,8 @@ func (d *Dp) Run() error {
 	}
 
 	var parentID string
-	layersID := make([]string, 0, len(digestSource.Layers))
-	for index, layer := range digestSource.Layers {
+	layersID := make([]string, 0, len(layers))
+	for index, layer := range layers {
 		data := make(map[string]any)
 
 		tempJson := digestModel
@@ -182,7 +187,7 @@ func (d *Dp) Run() error {
 		currentID := tools.GenLayerID(parentID, layer.Digest)
 		layersID = append(layersID, fmt.Sprintf("%s%s", currentID, LayerName))
 
-		if index == len(digestSource.Layers)-1 {
+		if index == len(layers)-1 {
 			delete(tempJson, "history")
 			delete(tempJson, "rootfs")
 			data = tempJson
@@ -196,6 +201,7 @@ func (d *Dp) Run() error {
 		}
 		parentID = currentID
 
+		fmt.Printf("downloading %d/%d: %s\n", index+1, len(layers), layer.Digest[7:])
 		if err = d.saveSingleLayer(currentID, layer.Digest, layer.MediaType, token.Token, data); err != nil {
 			d.log.Errorf("save single layer: ", err)
 			return err
@@ -209,7 +215,7 @@ func (d *Dp) Run() error {
 	}
 	defer repoFile.Close()
 
-	_, err = repoFile.WriteString(fmt.Sprintf(RepositoriesContent, d.image.name, d.image.tag, parentID))
+	_, err = repoFile.WriteString(fmt.Sprintf(repositoriesContent, d.image.name, d.image.tag, parentID))
 	if err != nil {
 		d.log.Error(err)
 		return err
@@ -238,13 +244,15 @@ func (d *Dp) Run() error {
 		return err
 	}
 
+	fmt.Printf("start merge all layers...\n")
 	output := fmt.Sprintf(OutFileTmpl, d.image.name, d.image.tag, strings.ReplaceAll(d.image.arch, "/", "-"))
 	if err := compress.Build(d.getDefaultPath(), output); err != nil {
 		d.log.Error(err)
 		return err
 	}
 
-	d.log.Infof("exported images: %s", output)
+	fmt.Printf("exported images: %s\n", output)
+	fmt.Printf("you can use `docker load -i %s` to load to Docker\n", output)
 
 	return nil
 }
@@ -255,6 +263,7 @@ func (d *Dp) init() (func() error, error) {
 	}
 
 	return func() error {
+		defer fmt.Printf("removed temporary folder: %s\n", tempDir)
 		return os.RemoveAll(tempDir)
 	}, nil
 }
