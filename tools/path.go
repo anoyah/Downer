@@ -23,8 +23,8 @@ func CreatePathWithFilepath(fp string) error {
 	} else {
 		// create all save path, except filename
 		path := filepath.Dir(fp)
-		_, err2 := os.Stat(path)
-		if !os.IsExist(err2) {
+		_, err := os.Stat(path)
+		if !os.IsExist(err) {
 			if err := os.MkdirAll(path, os.ModePerm); err != nil {
 				return err
 			}
