@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -62,9 +63,10 @@ type (
 	}
 
 	Image struct {
-		name string
-		tag  string
-		arch string
+		name   string
+		tag    string
+		arch   string
+		output string
 	}
 )
 
@@ -79,10 +81,11 @@ func init() {
 }
 
 type Config struct {
-	Arch  string
-	Name  string
-	Proxy string
-	Debug bool
+	Arch   string
+	Name   string
+	Proxy  string
+	Debug  bool
+	Output string
 }
 
 // NewDp ...
@@ -105,13 +108,23 @@ func NewDp(cfg *Config) (*Dp, error) {
 		panic(err)
 	}
 
+	if cfg.Output != "" {
+		// checkout output whether exist
+		if err := tools.CreatePathWithFilepath(cfg.Output); err != nil {
+			if errors.Is(err, tools.ErrFileExist) {
+				return nil, err
+			}
+		}
+	}
+
 	return &Dp{
 		client: client,
 		log:    log,
 		image: &Image{
-			name: name,
-			tag:  tag,
-			arch: cfg.Arch,
+			name:   name,
+			tag:    tag,
+			arch:   cfg.Arch,
+			output: cfg.Output,
 		},
 	}, nil
 }
@@ -245,16 +258,32 @@ func (d *Dp) Run() error {
 	}
 
 	fmt.Printf("start merge all layers...\n")
-	output := fmt.Sprintf(OutFileTmpl, d.image.name, d.image.tag, strings.ReplaceAll(d.image.arch, "/", "-"))
-	if err := compress.Build(d.getDefaultPath(), output); err != nil {
-		d.log.Error(err)
+	savedFilePath, err := d.compress()
+	if err != nil {
 		return err
 	}
 
-	fmt.Printf("exported images: %s\n", output)
-	fmt.Printf("you can use `docker load -i %s` to load to Docker\n", output)
+	fmt.Printf("exported images: %s\n", savedFilePath)
+	fmt.Printf("you can use `docker load -i %s` to load to Docker\n", savedFilePath)
 
 	return nil
+}
+
+// compress folder with tar and gzip
+func (d *Dp) compress() (string, error) {
+	var output string
+	if d.image.output != "" {
+		output = d.image.output
+	} else {
+		output = fmt.Sprintf(OutFileTmpl, d.image.name, d.image.tag, strings.ReplaceAll(d.image.arch, "/", "-"))
+	}
+
+	if err := compress.Build(d.getDefaultPath(), output); err != nil {
+		d.log.Error(err)
+		return "", err
+	}
+
+	return output, nil
 }
 
 func (d *Dp) init() (func() error, error) {
