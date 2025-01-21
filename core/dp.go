@@ -17,6 +17,7 @@ import (
 var (
 	arch2Manifest   = map[string]*http.Manifest{}
 	tempDir         = "images"
+	library         = "library"
 	containerConfig = map[string]any{
 		"Hostname":     "",
 		"Domainname":   "",
@@ -39,7 +40,7 @@ var (
 )
 
 const (
-	registryUrl         = "https://registry-1.docker.io/v2/library/%s/%s/%s"
+	registryUrl         = "https://registry-1.docker.io/v2/%s/%s/%s/%s"
 	OutFileTmpl         = "%s-%s-%s.tar.gz"
 	repositoriesContent = `{"%s":{"%s":"%s"}}`
 
@@ -98,6 +99,12 @@ func NewDp(cfg *Config) (*Dp, error) {
 	log.Debugf("get arch: %s", cfg.Arch)
 
 	name, tag := tools.ParseImage(cfg.Name)
+	// parse name exist slash
+	if strings.Contains(name, "/") {
+		librarys := strings.Split(name, "/")
+		library = strings.Join(librarys[:len(librarys)-1], "/")
+		name = librarys[len(librarys)-1]
+	}
 	log.Debugf("image: %s -> tag: %s", name, tag)
 
 	// TODO create specify directory
@@ -464,7 +471,7 @@ func (d *Dp) manifestsRequest(digest string, opts ...http.HeaderOption) (*http.R
 }
 
 func (d *Dp) buildRegistryRequest(kind string, image, tag string, opts ...http.HeaderOption) (*http.Response, error) {
-	url := fmt.Sprintf(registryUrl, image, kind, tag)
+	url := fmt.Sprintf(registryUrl, library, image, kind, tag)
 	d.log.Debugf("send request with url: %s", url)
 
 	return d.client.Do(context.Background(), url, opts...)
