@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// ProgressBar download process bar
 func ProgressBar(current, total int, desc string) {
 	if total < current {
 		return
