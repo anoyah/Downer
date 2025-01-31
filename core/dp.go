@@ -473,8 +473,13 @@ func (d *Dp) manifestsRequest(digest string, opts ...http.HeaderOption) (*http.R
 func (d *Dp) buildRegistryRequest(kind string, image, tag string, opts ...http.HeaderOption) (*http.Response, error) {
 	url := fmt.Sprintf(registryUrl, library, image, kind, tag)
 	d.log.Debugf("send request with url: %s", url)
+	r, err := d.client.Do(context.Background(), url, opts...)
+	if err != nil {
+		return nil, err
+	}
+	d.log.Debugf("response status code: %d", r.Code())
 
-	return d.client.Do(context.Background(), url, opts...)
+	return r, nil
 }
 
 func (d *Dp) buildSavePath(path string) string {
