@@ -10,3 +10,6 @@ go run downer.go \
     --output ./images/nginx.tar.gz
 ```
 
+### Installation
+
+`go install github.com/anoyah/downer@main`
