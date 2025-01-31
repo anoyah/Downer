@@ -11,7 +11,7 @@ var (
 	imageFlag   = flag.String("image", "", "--image nginx:alpine")
 	proxyFlag   = flag.String("proxy", "", "--proxy http://127.0.0.1.7890")
 	verboseFlag = flag.Bool("verbose", false, "--verbose")
-	outputFlag  = flag.String("output", "./", "--output ./images/xx.tar.gz")
+	outputFlag  = flag.String("output", "", "--output ./images/xx.tar.gz")
 )
 
 func main() {
