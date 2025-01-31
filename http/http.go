@@ -69,6 +69,7 @@ func (c *Client) Do(ctx context.Context, url string, opts ...HeaderOption) (*Res
 	return &Response{
 		body:   response.Body(),
 		size:   response.Size(),
+		code:   response.StatusCode(),
 		Header: response.Header(),
 	}, nil
 }
@@ -111,8 +112,13 @@ func (c *Client) check() error {
 type Response struct {
 	body []byte
 	size int64
+	code int
 
 	Header http.Header
+}
+
+func (r *Response) Code() int {
+	return r.code
 }
 
 func (r *Response) Body() []byte {
